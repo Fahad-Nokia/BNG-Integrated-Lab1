@@ -1,0 +1,76 @@
+name: MAG-integrated
+mgmt:
+  network: integ
+  ipv4-subnet: 192.168.41.0/24
+  bridge: integ
+
+
+topology:
+
+  kinds:
+
+    nokia_sros:
+      license: license.lic
+      env:
+       CF1: 1G
+       CF2: 1G
+
+  nodes:
+    radius:
+      kind: linux
+      image: freeradius/freeradius-server:3.2.3-alpine
+      binds:
+        - ./configs/radius/authorize:/etc/raddb/mods-config/files/authorize
+        - ./configs/radius/clients.conf:/etc/raddb/clients.conf
+        - ./configs/radius/radius_Interfaces:/etc/network/interfaces
+        - ./configs/radius/dictionary.alcatel.sr:/opt/share/freeradius/dictionary.alcatel.sr
+        - ./logs/radiusd.log:/radiusd.log
+      cmd: sh -c "sleep 5; ip r d default via 192.168.41.1; ip r add default via 100.0.0.1; ifup eth1; /opt/sbin/radiusd -X -l /radiusd.log; while :; do sleep 10; done"
+      mgmt-ipv4: 192.168.41.2
+
+
+    MAG1:
+     kind: nokia_sros
+     image: registry.srlinux.dev/pub/nokia_sros:25.3.R2
+     startup-config: configs/nodes/MAG1_config.txt
+     binds:
+       - configs/nodes/post-boot-exec.cfg:/tftpboot/post-boot-exec.cfg
+     type: "chassis=sr-1 slot=A card=cpm-1 slot=1 mda/1=me6-100gb-qsfp28"
+     mgmt-ipv4: 192.168.41.5
+
+    TRA-integrated:
+      kind: nokia_sros
+      image: registry.srlinux.dev/pub/nokia_sros:25.3.R2
+      startup-config: configs/nodes/TRA-integrated_config.txt
+      binds:
+       - configs/nodes/post-boot-exec.cfg:/tftpboot/post-boot-exec.cfg
+      type: "cpu=4 min_ram=16 chassis=sr-1s slot=A card=xcm-1s mda/1=s36-100gb-qsfp28"
+      mgmt-ipv4: 192.168.41.7
+
+    bngblaster:
+      kind: linux
+      image: ghcr.io/hatakkey/bngblaster:0.9.18
+      entrypoint: /bin/bash
+      mgmt-ipv4: 192.168.41.8
+      binds:
+       - ./configs/bngblaster/:/opt/bngblaster
+
+
+  links:
+
+    # backbone links
+   - endpoints: ["MAG1:eth1", "TRA-integrated:eth4"]
+
+   #  bng access side
+   - endpoints: ["TRA-integrated:eth6",  "bngblaster:eth1"]  # IPoE sessions
+   - endpoints: ["TRA-integrated:eth7",  "bngblaster:eth3"]  # PPPoE sessions
+   - endpoints: ["TRA-integrated:eth8", "MAG1:eth2"]
+
+  #  bng network side
+   - endpoints: ["TRA-integrated:eth10", "bngblaster:eth2"]   # IPoE sessions
+   - endpoints: ["TRA-integrated:eth11", "bngblaster:eth4"]   # PPPoE sessions
+
+  # Radius
+   - endpoints: ["TRA-integrated:eth12", "radius:eth1"]
+
+
