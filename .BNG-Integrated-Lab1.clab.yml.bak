@@ -35,11 +35,7 @@ topology:
      startup-config: configs/nodes/MAG1_config.txt
      binds:
        - configs/nodes/post-boot-exec.cfg:/tftpboot/post-boot-exec.cfg
-     type: sr-1 
-     components:
-       - mda:
-         - slot: 1
-           type: me6-100gb-qsfp28 
+     type: "chassis=sr-1 slot=A card=cpm-1 slot=1 mda/1=me6-100gb-qsfp28"
      mgmt-ipv4: 192.168.41.5
 
     TRA-integrated:
@@ -48,7 +44,7 @@ topology:
       startup-config: configs/nodes/TRA-integrated_config.txt
       binds:
        - configs/nodes/post-boot-exec.cfg:/tftpboot/post-boot-exec.cfg
-      type: sr-1s
+      type: "cpu=4 min_ram=16 chassis=sr-1s slot=A card=xcm-1s mda/1=s36-100gb-qsfp28"
       mgmt-ipv4: 192.168.41.7
 
     bngblaster:
